@@ -6,6 +6,9 @@ Parrots {
 
 // note that after you make a change here, you first need to save (apple-s), and then recompile (apple-k)
 
+// the following block defines variables named to describe functionailty which are assigned
+// strings to indicate the wii button associated with the functionality
+
 var wiiStartDur = "b"; //LEA
 var wiiEndDur = "a"; // LEA
 var wiiStartRate = "b"; // on nunchuk JO
@@ -28,12 +31,14 @@ var <>leaWii;
 var player, buttPlayer;
 var addPreset, newPresetArray, presetsArray, theString, theFile;
 var <selectPreset, namePreset, presetItemsList;
-var currentTempo = 1; // 
+var currentTempo = 1; //
+
 // **************************************************************************
 //        LOCK/UNLOCK VAR FOR GUI WIDGETS
 // **************************************************************************
 // set this to true to lock stuff
 var isEnabled= true;
+
 // ************************
 // synth var and buffer var
 var aSynth;
@@ -52,9 +57,10 @@ var tempoText;
 var font;
 var eZsWidth;
 var eZsNumWidth, eZsLabelWidth;
-
+// not sur ehte following are classvars, don't think I knew what
+// I was doing at this stage with these
 classvar buffers, buffSizes;
-// 
+//
 *new {|s|
 	"_prots________".postln;
 	s.postln;
@@ -68,17 +74,22 @@ classvar buffers, buffSizes;
 //                        INITIALISATION
 // *************************************************************************
 init {|s|
-myDir = Document.current.dir;
+// updated to reflect loss of Document funtionality
+myDir= thisProcess.nowExecutingPath.dirname.postln;
+
 // override for network
 // myDir = "/Volumes/lea/SC/DEV/DESERT";
 // server = s;
 s.postln;
+
+// load the buffers and buffsizes to arrays
+		// also load the presets array
 s.waitForBoot({
 	// ensure asynchronous stuff is complete before moving on
 	var c;
 	Routine.run({
 		c=Condition.new;
-		ParrotsDefs.new(s);
+		// ParrotsDefs.new(s);
 		buffers = GetBuffers2.new(s, (myDir ++ "/parrots/").postln).buffers;
 		buffSizes = GetBuffers2.new(s, (myDir ++ "/parrots/").postln).buffSizes;
 		presetsArray = CSVFileReader.read(myDir ++ "/parrotsPresets.txt");
@@ -121,7 +132,7 @@ TempoClock.default_(currentTempoClock);
 
 // ************************
 // make a synth and stop it
-aSynth=Synth.new(\parrots1, [\out, 0, \bufnum, buffers[0], \sPos , buffSizes[0].rand]); 
+aSynth=Synth.new(\parrots1, [\out, 0, \bufnum, buffers[0], \sPos , buffSizes[0].rand]);
 aSynth.stop;
 
 // **********************
@@ -130,6 +141,8 @@ aWin = Window.new("parrots", bounds:Rect(10,10,640,800)).front;
 
 // make sure window closes at end
 CmdPeriod.add({aWin.close});
+
+// not sure if this is relevant
 aCompView = CompositeView(aWin,Rect(0,0,640,800)).background_(Color.grey.alpha_(0.3));
 // aCompView.decorator = FlowLayout(aCompView.bounds);
 
@@ -200,14 +213,14 @@ leaWii.add("p", {|t,r,msg|
 	if (~clutches[1].at(wiiEndDur) == 1, {
 			{slidEndDur.valueAction = specEndDur.map(msg[1])}.defer;
 	}); // end if
-*/	
+*/
 	if (~clutches[1].at(wiiCurrentBuffer) == 1, {
 			{slidCurrentBuffer.valueAction = specCurrentBuffer.map(msg[1])}.defer;
 	}); // end if
 	if (~clutches[1].at(wiiStartPos) == 1, {
 			{slidStartPos.valueAction = msg[1]}.defer
 	}) // end if
-	
+
 }, 2); // end leaWii
 // add responder
 leaWii.add("p", {|t,r,msg|
@@ -253,18 +266,18 @@ leaWii.add(wiiTempoDecrease, {|t,r,msg|
 					TempoClock.default.tempo = currentTempo;
 					tempoText.string = currentTempo;
 				}.defer
-	}); // end if 
+	}); // end if
 }); // end leaWii
 leaWii.add(wiiAddPreset, {|t,r,msg|
 	//"in home".postln;
 	if (msg[1] == 1, {
 		{this.addPresetAction}.defer;
-	}); // end if	
-}); // end responder				
+	}); // end if
+}); // end responder
 */leaWii.add(wiiOnOff, {|t,r,msg|
 	if (msg[1] ==1, {
 		{ // start defer
-		if (buttPlayer.value == 0 , 
+		if (buttPlayer.value == 0 ,
 			{
 				buttPlayer.valueAction = 1
 			},
@@ -281,7 +294,7 @@ leaWii.add(wiiAddPreset, {|t,r,msg|
 doAction = "zilch";
 // JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 leaWii.add(wiiPresetNavigationClutch, {|t,r,msg|
-	if (msg[1] == 1, 
+	if (msg[1] == 1,
 		{doAction = "navigate"; "on".postln}, {doAction = "doIt"; "off".postln}
 	);
 }, 2); // end responder
@@ -290,18 +303,18 @@ leaWii.add("nr", {|t,r,msg|
 	// map the value of msg[1] to the range 0 to presetsArray.size
 	var theVal = ControlSpec(0, presetsArray.size, \lin, 1).map(msg[1]);
 	var temp = ControlSpec(0, presetsArray.size, \lin, 1).map(msg[1]);
-	if (~clutches[1].at(wiiPresetNavigationClutch) == 1, 
+	if (~clutches[1].at(wiiPresetNavigationClutch) == 1,
 	// then
-	{	
+	{
 		{selectPreset.value = theVal}.defer;
 		doAction = true;
-	}, // end if clause 
+	}, // end if clause
 	// else
 	{
 	if (doAction == "doIt", 	{
 	// var temp = ControlSpec(0, presetsArray.size, \lin, 1).map(msg[1]);
 		// "in do it".postln;
-			// {selectPreset.valueAction = temp-1; }.defer;û
+			// {selectPreset.valueAction = temp-1; }.defer;ï¿½
 				{this.applyPresets(ControlSpec(0, presetsArray.size, \lin, 1).map(msg[1]))}.defer;
 			doAction = "zilch";
 	})
@@ -335,7 +348,7 @@ slidStartDur.action = ({|ez|
 //                                  END DURATION
 // ****************************************************************************************
 
-// 
+//
 // make spec
 specEndDur = ControlSpec(0.2,3,\lin,0.1);
 // make slider
@@ -344,7 +357,7 @@ slidEndDur.font = font;
 // define action
 slidEndDur.action = ({|ez|
 	endDur.source = ez.value;
-});	
+});
 
 // ****************************************************************************************
 //                                  START RATE
@@ -389,7 +402,7 @@ slidCurrentBuffer.action = ({|ez|
 	// also update the control spec for start position
 	startPosControlSpec = ControlSpec(0,buffSizes[currentBuffer],\lin,100);
 	aWin.refresh;
-	
+
 });
 slidCurrentBuffer.valueAction = 0;
 slidCurrentBuffer.enabled = isEnabled;
@@ -469,7 +482,7 @@ namePreset.action = {|field|
 	selectPreset.items = presetItemsList;
 	aCompView.refresh;
 	this.savePresetsToFile;
-	
+
 };
 namePreset.enabled = isEnabled;
 // ****************************************************************************************
@@ -516,7 +529,7 @@ stopPlayer {
 // a method to start the player
 startPlayer {
 	{buttPlayer.value = 1;
-		player.play;}.defer;	
+		player.play;}.defer;
 }
 
 // ********************************************************
@@ -555,7 +568,7 @@ addPresetAction {
 	newPresetArray = Array.newClear(8);
 	// now get values for the individual elements of this array
 	// first the sliders
-	newPresetArray[0]=slidStartDur.value; 
+	newPresetArray[0]=slidStartDur.value;
 	newPresetArray[1]=slidEndDur.value;
 	newPresetArray[2]=slidStartRate.value;
 	newPresetArray[3]=slidEndRate.value;
@@ -591,8 +604,8 @@ savePresetsToFile {
 	theFile = File(myDir ++ "/parrotsPresets.txt", "w");
 	theFile.write(theString);
 	theFile.close;
-	
-	
+
+
 }
 
 } // end class

@@ -1,7 +1,7 @@
 
 
-Messages from external clients that should be processed by OSCresponders must be sent to the language port, 57120 by default. Use NetAddr.langPort to confirm which port the SuperCollider language is listening on.
-
+// Messages from external clients that should be processed by OSCresponders must be sent to the language port, 57120 by default. Use NetAddr.langPort to confirm which port the SuperCollider language is listening on.
+//
 
 
 
