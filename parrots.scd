@@ -424,8 +424,6 @@ eZsLabelWidth = 200;
 });
 ~widgets["amp"].enabled = isEnabled;
 
-
-
 // ***************
 // the pattern bit
 player = Pbind (
@@ -443,7 +441,14 @@ player = Pbind (
 ).play;
 player.pause;
 
+// ****************************************************************************
+//                             PRESETS
+// *****************************************************************************
 
+Preset.new(mainWin,
+	things:~widgets.postln,
+	file: "parrotsPresets.txt"
+);
 
 
 )
