@@ -25,6 +25,10 @@ var appDir= thisProcess.nowExecutingPath.dirname;
 ~buffSizes = Dictionary.new(0);
 // now do the work
 
+
+
+
+
 s.waitForBoot({
 	// for each folder
 	~folders.do({|folder, i|
@@ -140,6 +144,40 @@ var presets, slidPresets;
 var specPanner, slidPanner;
 // ************************
 
+
+// to allow easy conecting between various input controls and
+// functions of the app
+~switchBoard = Dictionary.new(0);
+
+//
+~inputs = Dictionary.new(0);
+
+~actionFunctions = Dictionary.new(0);
+
+
+
+~inputs["wildfire/1/fader1"] = OSCFunc(
+	{|msg, time, addr, recvPort|
+		msg[1].postln;
+		~switchBoard[\startPos] = msg[1];
+		~switchBoard.changed(~switchBoard[\startPos], msg[1]);
+		},
+		"/1/fader1"
+); // end OSCFunc
+
+~actionFunctions[\startPos] = {|theChanger, what, val|
+		if (what == ~switchBoard[\startPos],
+			{
+			{~widgets["startPos"].valueAction = ~switchBoard[\startPos]}.defer
+		}
+		); // end if
+	};
+~switchBoard.addDependant(~actionFunctions[\startPos]);
+
+
+
+// the various values in switchboard ccan be got from the presets on load, I think
+//~switchBoard[\setStartDur]
 // make a synth and stop it
 mainSynth=Synth.new(
 	\parrots1,
@@ -285,6 +323,7 @@ eZsLabelWidth = 200;
 	controlSpec: ~specs["startRate"],
 	bounds: Rect(10,(10 + (height*2)),width,25)
 ) ;
+
 ~widgets["startRate"].font = font;
 
 // *************
