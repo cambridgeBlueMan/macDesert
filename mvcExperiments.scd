@@ -50,3 +50,6 @@ r{
     }
 }.play(AppClock)
 )
+
+
+~model = Dictionary.new(0)

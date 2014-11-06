@@ -1,92 +1,4 @@
 (
-// get the root directory for the app
-var appDir= thisProcess.nowExecutingPath.dirname;
-
-// there will be a folder called "audio", and within that folder there
-// will be a series of directories to hold samples
-// the names of the folder will be in a literal array thus:
-
-// add the name of all directories here
-
-
-// now the whole job can be done by iterating the ~folders array
-~folders = ["parrots"];
-
-// make a dictionary for pathmatches
-
-~paths = Dictionary.new(0);
-
-// and a dictioary for buffers
-
-~buffers = Dictionary.new(0);
-
-// and a dictionary for buffSizes
-
-~buffSizes = Dictionary.new(0);
-// now do the work
-
-
-
-
-
-s.waitForBoot({
-	// for each folder
-	~folders.do({|folder, i|
-
-		// ******************************************************
-		// make the dictonary to hold the buffers for this folder
-		~buffers[folder] = Dictionary.new(0);
-
-		// ******************************************************
-		// make the dictonary to hold the buffer sizes for this folder
-		~buffSizes[folder] = Dictionary.new(0);
-
-		// get the file names held in the folder into an array
-		~paths[folder] = (appDir ++ "/" ++ folder ++ "/*.*" ).pathMatch;
-
-		// *************************************************************
-		// now iterate the files in this folder and load them to buffers
-		~paths[folder].do({|path, j|
-			Buffer.read(
-				s,
-				path,
-				action:{|buffer|
-					var fileName = path.basename.splitext[0];
-					~buffers[folder].put(fileName, buffer);
-					~buffers.postln;
-					~buffSizes[folder].put(fileName, buffer.numFrames).postln;
-					//~buffSizes.postln;
-					if (j == (~paths[folder].size-1),
-						{(folder + "is loaded").postln;}
-					); // end if
-				} // end action
-			);
-		});
-
-		// now set up the housekeeping
-		CmdPeriod.add({
-			~buffers[folder].do ({|item, i|
-				item.free;
-			});
-			Buffer.freeAll
-		});
-	}); // end folder do
-}); // end wait for boot
-s.waitForBoot({
-	// load defs and presets
-	var c;
-	Routine.run({
-		c=Condition.new;
-		ParrotsDefs.new(s);
-		~presetsArray = CSVFileReader.read(
-			thisProcess.nowExecutingPath.dirname ++ "/parrotsPresets.txt");
-		s.sync(c);
-		"defs loaded!".postln;
-	}); // end routine
-});
-) // end init
-
-(
 var folder = "parrots";
 var initLevel = 0.4; // presumable an amplitude?
 var width=600, height=30; // width and height for EZSliders
@@ -111,27 +23,12 @@ var mainWin;
 //var mainWin;
 var currentBuffer=0, currentPreset = 0;
 
-
-/*
-var slidStartDur, specStartDur;
-var slidEndDur, specEndDur;
-var slidStartRate, specStartRate;
-var slidEndRate, specEndRate;
-var slidCurrentBuffer;*/
-
-
-
-
-
-/*
-
-var startPosControlSpec;
-var txtStartPos, slidStartPos;*/
 var doAction, accelFlag, previousAccelFlag;
 var tempoText;
 var font;
 var eZsWidth;
 var eZsNumWidth, eZsLabelWidth;
+
 // not sur ehte following are classvars, don't think I knew what
 // I was doing at this stage with these
 var buffers, buffSizes;
@@ -142,12 +39,11 @@ var currentTempoClock = TempoClock(currentTempo);
 var tempoInc = 0.1;
 var presets, slidPresets;
 var specPanner, slidPanner;
+
+var makeCompSlider ; // NEW
 // ************************
 
-
-// to allow easy conecting between various input controls and
-// functions of the app
-~switchBoard = Dictionary.new(0);
+~dataStore = Dictionary.new(0);
 
 //
 ~inputs = Dictionary.new(0);
@@ -159,25 +55,25 @@ var specPanner, slidPanner;
 ~inputs["wildfire/1/fader1"] = OSCFunc(
 	{|msg, time, addr, recvPort|
 		msg[1].postln;
-		~switchBoard[\startPos] = msg[1];
-		~switchBoard.changed(~switchBoard[\startPos], msg[1]);
-		},
-		"/1/fader1"
+		~dataStore[\startPos] = msg[1];
+		~dataStore.changed(~dataStore[\startPos], msg[1]);
+	},
+	"/1/fader1"
 ); // end OSCFunc
 
 ~actionFunctions[\startPos] = {|theChanger, what, val|
-		if (what == ~switchBoard[\startPos],
-			{
-			{~widgets["startPos"].valueAction = ~switchBoard[\startPos]}.defer
+	if (what == ~dataStore[\startPos],
+		{
+			{~widgets["startPos"].valueAction = ~dataStore[\startPos]}.defer
 		}
-		); // end if
-	};
-~switchBoard.addDependant(~actionFunctions[\startPos]);
+	); // end if
+};
+~dataStore.addDependant(~actionFunctions[\startPos]);
 
 
 
 // the various values in switchboard ccan be got from the presets on load, I think
-//~switchBoard[\setStartDur]
+//~dataStore[\setStartDur]
 // make a synth and stop it
 mainSynth=Synth.new(
 	\parrots1,
@@ -201,7 +97,7 @@ CmdPeriod.add({mainWin.close});
 
 ~wiiMap = Dictionary.new;
 
-~wiiMap["StartDur"] = "b"; //LEA
+~wiiMap["startDur"] = "b"; //LEA
 ~wiiMap["endDur"] = "a"; // LEA
 ~wiiMap["StartRate"] = "b"; // on nunchuk JO
 ~wiiMap["endRate"] = "a"; // on nunchuk JO
@@ -233,9 +129,10 @@ CmdPeriod.add({mainWin.close});
 ~proxies["amp"] = PatternProxy.new(initLevel);
 ~proxies["out"] = PatternProxy.new(0);
 
-"klklklklkl22222222222".postln;
+//"klklklklkl22222222222".postln;
 
-
+// setter functions
+~setters = Dictionary.new(0);
 
 
 
@@ -246,146 +143,168 @@ eZsNumWidth = 50;
 eZsLabelWidth = 200;
 ~specs = Dictionary.new;
 ~widgets = Dictionary.new;
+// x = 10;
+
+// ****************************************************************************************
+//                      FUNCTION TO MAKE A SLIDER
+// ****************************************************************************************
+
+makeCompSlider = {|win, height, dataId|
+
+	// *************************************
+	// declare variables with function scope
+	var widgetHeight, staticText, textField, slider, model, updater, setValueFunction;
+
+	// *********
+	// MVC model
+	model = (myValue: 0.0);
+
+	// **********************
+	// common action function
+	setValueFunction = {|value|
+		// update the local data model
+		model[\myValue] = value;
+		// and signal that it has changed
+		model.changed(\value, value);
+		// update the dataStore
+		~dataStore[dataId] = value;
+		// and signal that that has changed
+		~dataStore.changed(dataId, value);
+	};
+
+	// ******************
+	// make a static text
+	widgetHeight = 20;
+	staticText = StaticText.new(
+		win, Rect(10,height.postln,200,widgetHeight)
+	);
+
+	// *************
+	// make a slider
+	slider = Slider.new(
+		win,
+		Rect(220,height, 200, widgetHeight);
+
+	);
+
+	// *********
+	// MVC stuff
+	slider.value = model[\myValue];
+	slider.action = {|view| setValueFunction.value(view.value)};
+
+	// ****************
+	// make a textField
+	textField = TextField.new(
+		win,
+		Rect(435, height, 50, widgetHeight)
+	);
+
+	// *********
+	// MVC stuff
+	textField.value = model[\myValue];
+	textField.action = {|view| setValueFunction.value(view.value)};
+
+	// ***************
+	// udater function
+	updater = {|theChanger, what, val|
+		if(what == \value, {
+			textField.value_(val);
+			slider.value_(val);
+			/*model[textString] = val;
+			model[textString].postln;
+			model.changed(textString, val);*/
+		});
+	};
+	// *****************
+	// add the local dependant
+	model.addDependant(updater);
+	staticText.align = \right;
+	staticText.string = dataId;
+
+	// ************
+	// housekeeping
+	win.onClose_({model.removeDependant(updater);});
+};// end of function
 
 // ****************************************************************************************
 //                                  START DURATION
 // ****************************************************************************************
 
 
-// *********
-// make spec
+// **********
+// make specs
 
 ~specs["startDur"] = ControlSpec(0.2,3,\lin,0.1);
-
-// ***********
-// make slider
-
-~widgets["startDur"] = EZSlider.new(
-	mainWin,
-	labelWidth:eZsLabelWidth,
-	label:"first Duration (" ++ ~wiiMap["startDur"] ++ ")",
-	controlSpec:~specs["startDur"],
-	bounds: Rect(10,10,width,25)
-
-) ;
-
-~widgets["startDur"].font = font;
-
-// *************
-// define action
-
-~widgets["startDur"].action = ({|ez|
-	~proxies["startDur"].source = ez.value;
-});
-// ****************************************************************************************
-//                                  END DURATION
-// ****************************************************************************************
-"klklklklkl333333333333".postln;
-// *********
-// make spec
-
 ~specs["endDur"] = ControlSpec(0.2,3,\lin,0.1);
-
-// ***********
-// make slider
-
-~widgets["endDur"] = EZSlider.new(
-	mainWin,
-	labelWidth:eZsLabelWidth,
-	label:"last Duration (" ++ ~wiiMap["endDur"] ++ ")" ,
-	controlSpec:~specs["endDur"] ,
-	bounds: Rect(10,(10 + height),width,25)
-
-) ;
-~widgets["endDur"].font = font;
-
-// define action
-~widgets["endDur"].action = ({|ez|
-	~proxies["endDur"].source = ez.value;
-});
-
-// ****************************************************************************************
-//                                  START RATE
-// ****************************************************************************************
-
-// *********
-// make spec
-
 ~specs["startRate"] = ControlSpec(-10,-0.0001,\lin,0.1);
-
-// ***********
-// make slider
-
-~widgets["startRate"] = EZSlider.new(
-	mainWin,
-	labelWidth:eZsLabelWidth,
-	label:"first rate (" ++ ~wiiMap["startRate"] ++ ")",
-	controlSpec: ~specs["startRate"],
-	bounds: Rect(10,(10 + (height*2)),width,25)
-) ;
-
-~widgets["startRate"].font = font;
-
-// *************
-// define action
-
-~widgets["startRate"].action = ({|ez|
-	~proxies["startRate"].source = ez.value;
-});
-// ****************************************************************************************
-//                                  END RATE
-// ****************************************************************************************
-
-// make spec
 ~specs["endRate"] = ControlSpec(0.0001,10,\lin,0.1);
-// make slider
-~widgets["endRate"] = EZSlider.new(
-	mainWin,
-	labelWidth:eZsLabelWidth,
-	label:"last rate (" ++ ~wiiMap["endRate"] ++ ")",
-	controlSpec:~specs["endRate"] ,
-	bounds: Rect(10,(10 + (height*3)),width,25)) ;
+~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100);
 
-~widgets["endRate"].font = font;
 
-// *************
-// define action
+// ************************
+// make sliders and setters
 
-~widgets["endRate"].action = ({|ez|
-	~proxies["endRate"].source = ez.value;
+
+["startDur", "endDur", "startRate", "endRate", "currentBuffer"].do({|item, i|
+
+	// ***********
+	// make slider
+
+	~widgets[item] = makeCompSlider.value(
+		mainWin,
+		20 + (25*i),
+		item
+	);
+
+	// *********
+	// MVC stuff
+
+	~setters[item] = {|theChanger, what, val|
+		if (what == item,
+			{~proxies[item].source = ~specs[item].map(val)};
+		); // end if
+	};
+	~dataStore.addDependant(~setters[item]);
+}); // end do
+
+// ***********************************
+// release all dependants on CmdPeriod
+CmdPeriod.add({
+	~dataStore.release;
 });
-"klklklklkl4444444444444".postln;
 // ****************************************************************************************
 //                                  CURRENT BUFFER SELECTOR
 // ****************************************************************************************
+//
+// // make spec
+// ~specs["currentBuffer"] = ControlSpec(0,~buffSizes[folder].size-1,\lin,1);
+// // make slider
+// ~widgets["currentBuffer"] = EZSlider.new(
+// 	mainWin,
+// 	labelWidth:eZsLabelWidth,
+// 	initVal:0,
+// 	label:"current buffer (" ++ ~wiiMap["currentBuffer"] ++ ")",
+// 	controlSpec:~specs["currentBuffer"] ,
+// 	bounds: Rect(10,(10 + (height*4)),width,25)
+// );
+//
+// ~widgets["currentBuffer"].font = font;
+// // define action
+// ~widgets["currentBuffer"].action = ({|ez|
+// 	currentBuffer = ez.value.postln;
+// 	~proxies["currentBuffer"].source = currentBuffer;
+// 	// also update the control spec for start position
+// 	~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100);
+// 	mainWin.refresh;
+//
+// });
+// "klklklklkl55555555555555".postln;
+// ~widgets["currentBuffer"].valueAction = 0;
+// ~widgets["currentBuffer"].enabled = isEnabled;
+//
 
-// make spec
-~specs["currentBuffer"] = ControlSpec(0,~buffSizes[folder].size-1,\lin,1);
-// make slider
-~widgets["currentBuffer"] = EZSlider.new(
-	mainWin,
-	labelWidth:eZsLabelWidth,
-	initVal:0,
-	label:"current buffer (" ++ ~wiiMap["currentBuffer"] ++ ")",
-	controlSpec:~specs["currentBuffer"] ,
-	bounds: Rect(10,(10 + (height*4)),width,25)
-);
-~widgets["currentBuffer"].font = font;
-// define action
-~widgets["currentBuffer"].action = ({|ez|
-	currentBuffer = ez.value.postln;
-	~proxies["currentBuffer"].source = currentBuffer;
-	// also update the control spec for start position
-	~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100);
-	mainWin.refresh;
-
-});
-~widgets["currentBuffer"].valueAction = 0;
-~widgets["currentBuffer"].enabled = isEnabled;
 
 
-
-"klklklklkl55555555555555".postln;
 // ****************************************************************************************
 //                               START POSITION (SIMPLE SLIDER)
 // ****************************************************************************************
@@ -486,7 +405,7 @@ player.pause;
 
 Preset.new(mainWin,
 	things:~widgets.postln,
-	file: "parrotsPresets.txt"
+	// file: "parrotsPresets.txt"
 );
 
 

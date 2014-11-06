@@ -52,7 +52,7 @@ Preset  {
 		// throw error if no list
 		if (things.isNil,{ Error("you must provide a wiidget list").throw});
 
-		//things.postln;
+		things.postln;
 		// convert the dictionary to an array sorted by key
 		// i.e. [key1, val1, key2, val2, key3, val3 etc]
 		things = things.asSortedArgsArray.postln;
@@ -65,11 +65,9 @@ Preset  {
 		// *******************************
 		// load file to array if it exists
 		presetsFilePath = file ?? "presets.txt";
+			presetsFilePath .postln;
 		presetsFilePath = (
-			// doesn't work in ide
-			//Document.current.dir ++ "/" ++ presetsFilePath);
-			// so
-			thisProcess.nowExecutingPath.dirname ++ "/" ++ presetsFilePath);
+			thisProcess.nowExecutingPath.dirname ++ "/" ++ presetsFilePath).postln;
 		if (File.exists(presetsFilePath), {
 			presetsArray = CSVFileReader.read(
 				(presetsFilePath);
@@ -80,7 +78,7 @@ Preset  {
 
 
 		// ****************************************
-		// did we get a window and pos, if not create
+		"did we get a window and pos, if not create".postln;
 		window = window ?? {Initialiser.initWin(aName: "made in preset")};
 		//if (window.isNil, {Error("you must provide a window for the Preset class").throw});
 
