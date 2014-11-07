@@ -238,14 +238,15 @@ makeCompSlider = {|win, height, dataId|
 ~specs["endDur"] = ControlSpec(0.2,3,\lin,0.1);
 ~specs["startRate"] = ControlSpec(-10,-0.0001,\lin,0.1);
 ~specs["endRate"] = ControlSpec(0.0001,10,\lin,0.1);
-~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100);
+~specs["currentBuffer"] = ControlSpec(0,~buffSizes[folder].size-1,\lin,1);
+~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100).postln;
 
 
 // ************************
 // make sliders and setters
 
 
-["startDur", "endDur", "startRate", "endRate", "currentBuffer"].do({|item, i|
+["startDur", "endDur", "startRate", "endRate", "currentBuffer", "startPos"].do({|item, i|
 
 	// ***********
 	// make slider
@@ -263,6 +264,12 @@ makeCompSlider = {|win, height, dataId|
 		if (what == item,
 			{~proxies[item].source = ~specs[item].map(val)};
 		); // end if
+		// the exception is current buffer, which also has to update a spec
+		if (what == "currentBuffer",
+			{
+				~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[~specs["currentBuffer"].map(val).postln].postln,\lin,100);
+			}
+		); // end if
 	};
 	~dataStore.addDependant(~setters[item]);
 }); // end do
@@ -272,141 +279,176 @@ makeCompSlider = {|win, height, dataId|
 CmdPeriod.add({
 	~dataStore.release;
 });
-// ****************************************************************************************
-//                                  CURRENT BUFFER SELECTOR
-// ****************************************************************************************
+
+
+
 //
-// // make spec
-// ~specs["currentBuffer"] = ControlSpec(0,~buffSizes[folder].size-1,\lin,1);
-// // make slider
-// ~widgets["currentBuffer"] = EZSlider.new(
+//
+// ~widgets["startPos"]= makeCompSlider.value(
 // 	mainWin,
-// 	labelWidth:eZsLabelWidth,
-// 	initVal:0,
-// 	label:"current buffer (" ++ ~wiiMap["currentBuffer"] ++ ")",
-// 	controlSpec:~specs["currentBuffer"] ,
-// 	bounds: Rect(10,(10 + (height*4)),width,25)
+// 	145, //20 + (25*i),
+// 	"startPos"
 // );
 //
-// ~widgets["currentBuffer"].font = font;
-// // define action
-// ~widgets["currentBuffer"].action = ({|ez|
-// 	currentBuffer = ez.value.postln;
-// 	~proxies["currentBuffer"].source = currentBuffer;
-// 	// also update the control spec for start position
-// 	~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100);
-// 	mainWin.refresh;
+// // *********
+// // MVC stuff
 //
-// });
-// "klklklklkl55555555555555".postln;
-// ~widgets["currentBuffer"].valueAction = 0;
-// ~widgets["currentBuffer"].enabled = isEnabled;
-//
+// ~setters["startPos"] = {|theChanger, what, val|
+// 	if (what == "startPos",
+// 		{~proxies["startPos"].source = ~specs["startPos"].map(~widgets["startPos"].value).postln;
+// 			// ~widgets["startPos"].value = ~specs["startPos"].map(~widgets["startPos"].value)
+// 	}); // end if
+// };
+// ~dataStore.addDependant(~setters["startPos"]);
+
+	//
+	// ~widgets["startPos"].action = {
+	// 	"twattock".postln;
+	// 	~widgets["startPos"].value.postln;
+	// 	~specs["startPos"].postln;
+	// 	~twattock = ~specs["startPos"].map(~widgets["startPos"].value).postln;
+	// 	~proxies["startPos"].source = ~specs["startPos"].map(~widgets["startPos"].value).postln;
+	// 	~widgets["startPosVal"].value = ~specs["startPos"].map(~widgets["startPos"].value)
+	// };
 
 
 
-// ****************************************************************************************
-//                               START POSITION (SIMPLE SLIDER)
-// ****************************************************************************************
 
-// this time a simple slider
-~widgets["startPos"]= Slider(
-	mainWin,
-	Rect(260,(10 + (height*5)),150,25)
-);
-~widgets["startPos"].action = {
-	"twattock".postln;
-	~widgets["startPos"].value.postln;
-	~specs["startPos"].postln;
-	~twattock = ~specs["startPos"].map(~widgets["startPos"].value).postln;
-	~proxies["startPos"].source = ~specs["startPos"].map(~widgets["startPos"].value).postln;
-	~widgets["startPosVal"].value = ~specs["startPos"].map(~widgets["startPos"].value)
-};
-
-// simple slider so we have to do the label manually
-~widgets["txtStartPos"]=StaticText(
-	mainWin,
-	Rect(10,(10 + (height*5)),
-		eZsLabelWidth,25)
-);
-~widgets["txtStartPos"].align_(\right);
-~widgets["txtStartPos"].font = font;
-~widgets["txtStartPos"].string = "start position(" ++ ~wiiMap["startPos"] ++ ")";
-
-// ****************************************************************************************
-//                               START POSITION VALUE FIELD
-// ****************************************************************************************
-
-~widgets["startPosVal"] = TextField(
-	mainWin,
-	Rect(560,(10 + (height*5)),150,25)
-);
+	// ****************************************************************************************
+	//                                  CURRENT BUFFER SELECTOR
+	// ****************************************************************************************
+	//
+	// // make spec
+	// ~specs["currentBuffer"] = ControlSpec(0,~buffSizes[folder].size-1,\lin,1);
+	// // make slider
+	// ~widgets["currentBuffer"] = EZSlider.new(
+	// 	mainWin,
+	// 	labelWidth:eZsLabelWidth,
+	// 	initVal:0,
+	// 	label:"current buffer (" ++ ~wiiMap["currentBuffer"] ++ ")",
+	// 	controlSpec:~specs["currentBuffer"] ,
+	// 	bounds: Rect(10,(10 + (height*4)),width,25)
+	// );
+	//
+	// ~widgets["currentBuffer"].font = font;
+	// // define action
+	// ~widgets["currentBuffer"].action = ({|ez|
+	// 	currentBuffer = ez.value.postln;
+	// 	~proxies["currentBuffer"].source = currentBuffer;
+	// 	// also update the control spec for start position
+	// 	~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100);
+	// 	mainWin.refresh;
+	//
+	// });
+	// "klklklklkl55555555555555".postln;
+	// ~widgets["currentBuffer"].valueAction = 0;
+	// ~widgets["currentBuffer"].enabled = isEnabled;
+	//
 
 
-// ****************************************************************************************
-//                               START/STOP BUTTON
-// ****************************************************************************************
+
+	// ****************************************************************************************
+	//                               START POSITION (SIMPLE SLIDER)
+	// ****************************************************************************************
+
+	/*// this time a simple slider
+	~widgets["startPos"]= Slider(
+		mainWin,
+		Rect(260,(10 + (height*5)),150,25)
+	);
+	~widgets["startPos"].action = {
+		"twattock".postln;
+		~widgets["startPos"].value.postln;
+		~specs["startPos"].postln;
+		~twattock = ~specs["startPos"].map(~widgets["startPos"].value).postln;
+		~proxies["startPos"].source = ~specs["startPos"].map(~widgets["startPos"].value).postln;
+		~widgets["startPosVal"].value = ~specs["startPos"].map(~widgets["startPos"].value)
+	};
+
+	// simple slider so we have to do the label manually
+	~widgets["txtStartPos"]=StaticText(
+		mainWin,
+		Rect(10,(10 + (height*5)),
+			eZsLabelWidth,25)
+	);
+	~widgets["txtStartPos"].align_(\right);
+	~widgets["txtStartPos"].font = font;
+	~widgets["txtStartPos"].string = "start position(" ++ ~wiiMap["startPos"] ++ ")";
+
+	// ****************************************************************************************
+	//                               START POSITION VALUE FIELD
+	// ****************************************************************************************
+
+	~widgets["startPosVal"] = TextField(
+		mainWin,
+		Rect(560,(10 + (height*5)),150,25)
+	);
+
+*/
+	// ****************************************************************************************
+	//                               START/STOP BUTTON
+	// ****************************************************************************************
 
 
-// now a start/stop
-~widgets["play"] = Button(
-	mainWin,
-	Rect(330, 300, 60, 60)
-);
-~widgets["play"].font = font;
-~widgets["play"].states = ([
-	["off (" ++ ~wiiMap["OnOff"]  ++ ")", Color.black, Color.yellow],
-	["on", Color.black, Color.green]
-]);
-~widgets["play"].action = ({|butt|
-	if (butt.value == 1, {player.play}, {player.pause});
-}); // end action
-// buttPlayer.valueAction = 0;
+	// now a start/stop
+	~widgets["play"] = Button(
+		mainWin,
+		Rect(330, 300, 60, 60)
+	);
+	~widgets["play"].font = font;
+	~widgets["play"].states = ([
+		["off (" ++ ~wiiMap["OnOff"]  ++ ")", Color.black, Color.yellow],
+		["on", Color.black, Color.green]
+	]);
+	~widgets["play"].action = ({|butt|
+		if (butt.value == 1, {player.play}, {player.pause});
+	}); // end action
+	// buttPlayer.valueAction = 0;
 
-// ****************************************************************************************
-//                           ADJUST TEMPO TEXT BOX
-// ****************************************************************************************
+	// ****************************************************************************************
+	//                           ADJUST TEMPO TEXT BOX
+	// ****************************************************************************************
 
-~widgets["tempo"] = StaticText(mainWin, Rect(330, 400, 100,100));
-~widgets["tempo"].string = "1"; // wiiTempoDecrease ++ ", " ++ wiiTempoIncrease;
-~widgets["tempo"].background = Color.white;
-~widgets["tempo"].align_(\center);
-~widgets["tempo"].font = font;
+	~widgets["tempo"] = StaticText(mainWin, Rect(330, 400, 100,100));
+	~widgets["tempo"].string = "1"; // wiiTempoDecrease ++ ", " ++ wiiTempoIncrease;
+	~widgets["tempo"].background = Color.white;
+	~widgets["tempo"].align_(\center);
+	~widgets["tempo"].font = font;
 
-// *******************************************************
-// MIXER SLIDER
-// *******************************************************
-~widgets["amp"] = Slider(mainWin, Rect(10, 300, 20, 80));
-~widgets["amp"].action = ({|slid|
-	~proxies["amp"].source = slid.value.postln;
-});
-~widgets["amp"].enabled = isEnabled;
+	// *******************************************************
+	// MIXER SLIDER
+	// *******************************************************
+	~widgets["amp"] = Slider(mainWin, Rect(10, 300, 20, 80));
+	~widgets["amp"].action = ({|slid|
+		~proxies["amp"].source = slid.value.postln;
+	});
+	~widgets["amp"].enabled = isEnabled;
 
-// ***************
-// the pattern bit
-player = Pbind (
-	\instrument,  \parrots1,
-	\bufnum, ~proxies["currentBuffer"],
-	\firstDur, ~proxies["startDur"],
-	\lastDur, ~proxies["endDur"],
-	\startRate, ~proxies["startRate"],
-	\endRate, ~proxies["endRate"],
-	\sPos, ~proxies["startPos"],
-	\dur, 1,
-	\amp, ~proxies["amp"],
-	\out, ~proxies["out"],
-	\pos, ~proxies["panner"]
-).play;
-player.pause;
+	// ***************
+	// the pattern bit
+	player = Pbind (
+		\instrument,  \parrots1,
+		\bufnum, ~proxies["currentBuffer"],
+		\firstDur, ~proxies["startDur"],
+		\lastDur, ~proxies["endDur"],
+		\startRate, ~proxies["startRate"],
+		\endRate, ~proxies["endRate"],
+		\sPos, ~proxies["startPos"],
+		\dur, 1,
+		\amp, ~proxies["amp"],
+		\out, ~proxies["out"],
+		\pos, ~proxies["panner"]
+	).play;
+	player.pause;
 
-// ****************************************************************************
-//                             PRESETS
-// *****************************************************************************
+	// ****************************************************************************
+	//                             PRESETS
+	// *****************************************************************************
 
-Preset.new(mainWin,
-	things:~widgets.postln,
-	// file: "parrotsPresets.txt"
-);
+	Preset.new(mainWin,
+		things:~widgets.postln,
+		// file: "parrotsPresets.txt"
+	);
 
 
 )
