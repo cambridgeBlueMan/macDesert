@@ -32,6 +32,7 @@ Preset  {
 	var presetItemsList; // array of item strings to display
 	var renamePresetTextField;
 	var newPresetArray; // single row array to hold values for a new preset
+	var namesOfThings; // 1D array containing keys from the dataStore
 
 	// ************************************************************************
 
@@ -47,23 +48,43 @@ Preset  {
 
 	// ************************************************************************
 	init {|window, pos, file, things|
+		var tempThings = things.asSortedArgsArray.postn("should be an array");
 		"in init".postln;
 		// *********************
 		// throw error if no list
-		if (things.isNil,{ Error("you must provide a wiidget list").throw});
+		if (things.isNil,{ Error("you must provide a data list").throw});
 
-		things.postln;
+		things.postn("things as passed");
+
+		// we no longer care about the order of the things,
+		// so all the following can go
+
+
 		// convert the dictionary to an array sorted by key
 		// i.e. [key1, val1, key2, val2, key3, val3 etc]
-		things = things.asSortedArgsArray.postln;
+		things = Dictionary.new;
+		things.putPairs(tempThings);
+
+		things.postn("as sorted dicitonary");
 		// then convert that to 2D array ready for manipulation
+		/*
 		things = Array2D.fromArray(things.size/2, 2, things);
-		things = things.colAt(1);
-		things.postln;
+		things.postn("things as 2d array");
+		things.rows.postn("this is the rows");
+		things.cols.postn("This is the columns");
+		things = things.at(0,0).postln;
+		namesOfThings = things.(0, 1).postln;
+		things = things.at(1,0).postln;
+				things = things.at(1,1).postln;
+		namesOfThings.postn("names of things");
+*/
 		// following doesn't cut it cos we can't depend on the order
 		// things = Dictionary.newFrom(things.asSortedArgsArray).postln;
+
+
 		// *******************************
 		// load file to array if it exists
+
 		presetsFilePath = file ?? "presets.txt";
 			presetsFilePath .postln;
 		presetsFilePath = (
@@ -76,11 +97,15 @@ Preset  {
 			{presetsArray = Array.new(0);
 		});
 
+		//
+		// // ****************************************
+		// "did we get a window and pos, if not create".postln;
+		// window = window ?? {Initialiser.initWin(aName: "made in preset")};
+		//
 
-		// ****************************************
-		"did we get a window and pos, if not create".postln;
-		window = window ?? {Initialiser.initWin(aName: "made in preset")};
-		//if (window.isNil, {Error("you must provide a window for the Preset class").throw});
+		// ******************
+		// insist on a window
+		if (window.isNil, {Error("you must provide a window for the Preset class").throw});
 
 		pos = pos ?? {50@400};
 		rect = Rect(pos.x, pos.y, 400, 400);
@@ -115,6 +140,7 @@ Preset  {
 			renamePresetTextField.string = presetsArray[menu.value][0];
 			things.do({|item, i|
 				item.class.postln;
+				/*
 				if (item.isKindOf(MixerChannel),
 					{
 						presetsArray[menu.value][i+1];
@@ -125,7 +151,17 @@ Preset  {
 				}); // end if kind of slider
 				if (item.isKindOf(EZSlider), {
 					item.valueAction = presetsArray[menu.value][i+1].postln;
-				}); // end if kind of slider
+				}); // end if kind of EZSlider
+				*/
+
+				if (item.isKindOf(ParrotsSlider), {
+					item.setValue(presetsArray[menu.value][i+1].postln);
+
+				}); // end if kind of ParrotsSlider
+
+				// what we are now doing is updating the dataStore and then issuing
+				// a changed message
+
 				// =================================
 				//
 				//
@@ -202,6 +238,7 @@ Preset  {
 			"twattock".postln;
 			// note that we have the actual objects here, so we can test them for type
 			// and process accordingly
+			/*
 			if (item.isKindOf(MixerChannel),
 				{
 					newPresetArray[i+1] = item.muted.asInteger;
@@ -212,6 +249,14 @@ Preset  {
 			if (item.isKindOf(EZSlider), {
 				newPresetArray[i+1] = item.value.postln;
 			});
+			*/
+
+			if (item.isKindOf(ParrotsSlider), {
+				newPresetArray[i+1] = item.model[\myValue];
+					// item.setValue(presetsArray[menu.value][i+1].postln);
+				}); // end if kind of ParrotsSlider
+
+
 			// =================================
 			//
 			//

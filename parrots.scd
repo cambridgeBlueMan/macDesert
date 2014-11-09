@@ -145,86 +145,89 @@ eZsLabelWidth = 200;
 ~widgets = Dictionary.new;
 // x = 10;
 
+
+
+
 // ****************************************************************************************
 //                      FUNCTION TO MAKE A SLIDER
 // ****************************************************************************************
 
-makeCompSlider = {|win, height, dataId|
-
-	// *************************************
-	// declare variables with function scope
-	var widgetHeight, staticText, textField, slider, model, updater, setValueFunction;
-
-	// *********
-	// MVC model
-	model = (myValue: 0.0);
-
-	// **********************
-	// common action function
-	setValueFunction = {|value|
-		// update the local data model
-		model[\myValue] = value;
-		// and signal that it has changed
-		model.changed(\value, value);
-		// update the dataStore
-		~dataStore[dataId] = value;
-		// and signal that that has changed
-		~dataStore.changed(dataId, value);
-	};
-
-	// ******************
-	// make a static text
-	widgetHeight = 20;
-	staticText = StaticText.new(
-		win, Rect(10,height.postln,200,widgetHeight)
-	);
-
-	// *************
-	// make a slider
-	slider = Slider.new(
-		win,
-		Rect(220,height, 200, widgetHeight);
-
-	);
-
-	// *********
-	// MVC stuff
-	slider.value = model[\myValue];
-	slider.action = {|view| setValueFunction.value(view.value)};
-
-	// ****************
-	// make a textField
-	textField = TextField.new(
-		win,
-		Rect(435, height, 50, widgetHeight)
-	);
-
-	// *********
-	// MVC stuff
-	textField.value = model[\myValue];
-	textField.action = {|view| setValueFunction.value(view.value)};
-
-	// ***************
-	// udater function
-	updater = {|theChanger, what, val|
-		if(what == \value, {
-			textField.value_(val);
-			slider.value_(val);
-			/*model[textString] = val;
-			model[textString].postln;
-			model.changed(textString, val);*/
-		});
-	};
-	// *****************
-	// add the local dependant
-	model.addDependant(updater);
-	staticText.align = \right;
-	staticText.string = dataId;
-
-	// ************
-	// housekeeping
-	win.onClose_({model.removeDependant(updater);});
-};// end of function
+// makeCompSlider = {|win, height, dataId|
+//
+// 	// *************************************
+// 	// declare variables with function scope
+// 	var widgetHeight, staticText, textField, slider, model, updater, setValueFunction;
+//
+// 	// *********
+// 	// MVC model
+// 	model = (myValue: 0.0);
+//
+// 	// **********************
+// 	// common action function
+// 	setValueFunction = {|value|
+// 		// update the local data model
+// 		model[\myValue] = value;
+// 		// and signal that it has changed
+// 		model.changed(\value, value);
+// 		// update the dataStore
+// 		~dataStore[dataId] = value;
+// 		// and signal that that has changed
+// 		~dataStore.changed(dataId, value);
+// 	};
+//
+// 	// ******************
+// 	// make a static text
+// 	widgetHeight = 20;
+// 	staticText = StaticText.new(
+// 		win, Rect(10,height.postln,200,widgetHeight)
+// 	);
+//
+// 	// *************
+// 	// make a slider
+// 	slider = Slider.new(
+// 		win,
+// 		Rect(220,height, 200, widgetHeight);
+//
+// 	);
+//
+// 	// *********
+// 	// MVC stuff
+// 	slider.value = model[\myValue];
+// 	slider.action = {|view| setValueFunction.value(view.value)};
+//
+// 	// ****************
+// 	// make a textField
+// 	textField = TextField.new(
+// 		win,
+// 		Rect(435, height, 50, widgetHeight)
+// 	);
+//
+// 	// *********
+// 	// MVC stuff
+// 	textField.value = model[\myValue];
+// 	textField.action = {|view| setValueFunction.value(view.value)};
+//
+// 	// ***************
+// 	// udater function
+// 	updater = {|theChanger, what, val|
+// 		if(what == \value, {
+// 			textField.value_(val);
+// 			slider.value_(val);
+// 			/*model[textString] = val;
+// 			model[textString].postln;
+// 			model.changed(textString, val);*/
+// 		});
+// 	};
+// 	// *****************
+// 	// add the local dependant
+// 	model.addDependant(updater);
+// 	staticText.align = \right;
+// 	staticText.string = dataId;
+//
+// 	// ************
+// 	// housekeeping
+// 	win.onClose_({model.removeDependant(updater);});
+// };// end of function
 
 // ****************************************************************************************
 //                                  START DURATION
@@ -240,21 +243,23 @@ makeCompSlider = {|win, height, dataId|
 ~specs["endRate"] = ControlSpec(0.0001,10,\lin,0.1);
 ~specs["currentBuffer"] = ControlSpec(0,~buffSizes[folder].size-1,\lin,1);
 ~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100).postln;
+~specs["amp"] = ControlSpec(0, 1, step: 0.0001);
 
 
 // ************************
 // make sliders and setters
 
 
-["startDur", "endDur", "startRate", "endRate", "currentBuffer", "startPos"].do({|item, i|
+["startDur", "endDur", "startRate", "endRate", "currentBuffer", "startPos", "amp"].do({|item, i|
 
 	// ***********
 	// make slider
 
-	~widgets[item] = makeCompSlider.value(
+	~widgets[item] = ParrotsSlider(
 		mainWin,
 		20 + (25*i),
-		item
+		item,
+		~dataStore
 	);
 
 	// *********
@@ -267,10 +272,16 @@ makeCompSlider = {|win, height, dataId|
 		// the exception is current buffer, which also has to update a spec
 		if (what == "currentBuffer",
 			{
-				~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[~specs["currentBuffer"].map(val).postln].postln,\lin,100);
+			~specs["startPos"] = ControlSpec(
+					0,
+					~buffSizes[folder].asArray[~specs["currentBuffer"].map(val)],
+					\lin,
+					100
+				);
 			}
 		); // end if
 	};
+	~dataStore[item] = 0; // initialise the data store
 	~dataStore.addDependant(~setters[item]);
 }); // end do
 
@@ -282,112 +293,8 @@ CmdPeriod.add({
 
 
 
-//
-//
-// ~widgets["startPos"]= makeCompSlider.value(
-// 	mainWin,
-// 	145, //20 + (25*i),
-// 	"startPos"
-// );
-//
-// // *********
-// // MVC stuff
-//
-// ~setters["startPos"] = {|theChanger, what, val|
-// 	if (what == "startPos",
-// 		{~proxies["startPos"].source = ~specs["startPos"].map(~widgets["startPos"].value).postln;
-// 			// ~widgets["startPos"].value = ~specs["startPos"].map(~widgets["startPos"].value)
-// 	}); // end if
-// };
-// ~dataStore.addDependant(~setters["startPos"]);
-
-	//
-	// ~widgets["startPos"].action = {
-	// 	"twattock".postln;
-	// 	~widgets["startPos"].value.postln;
-	// 	~specs["startPos"].postln;
-	// 	~twattock = ~specs["startPos"].map(~widgets["startPos"].value).postln;
-	// 	~proxies["startPos"].source = ~specs["startPos"].map(~widgets["startPos"].value).postln;
-	// 	~widgets["startPosVal"].value = ~specs["startPos"].map(~widgets["startPos"].value)
-	// };
-
-
-
-
-	// ****************************************************************************************
-	//                                  CURRENT BUFFER SELECTOR
-	// ****************************************************************************************
-	//
-	// // make spec
-	// ~specs["currentBuffer"] = ControlSpec(0,~buffSizes[folder].size-1,\lin,1);
-	// // make slider
-	// ~widgets["currentBuffer"] = EZSlider.new(
-	// 	mainWin,
-	// 	labelWidth:eZsLabelWidth,
-	// 	initVal:0,
-	// 	label:"current buffer (" ++ ~wiiMap["currentBuffer"] ++ ")",
-	// 	controlSpec:~specs["currentBuffer"] ,
-	// 	bounds: Rect(10,(10 + (height*4)),width,25)
-	// );
-	//
-	// ~widgets["currentBuffer"].font = font;
-	// // define action
-	// ~widgets["currentBuffer"].action = ({|ez|
-	// 	currentBuffer = ez.value.postln;
-	// 	~proxies["currentBuffer"].source = currentBuffer;
-	// 	// also update the control spec for start position
-	// 	~specs["startPos"] = ControlSpec(0,~buffSizes[folder].asArray[currentBuffer].postln,\lin,100);
-	// 	mainWin.refresh;
-	//
-	// });
-	// "klklklklkl55555555555555".postln;
-	// ~widgets["currentBuffer"].valueAction = 0;
 	// ~widgets["currentBuffer"].enabled = isEnabled;
 	//
-
-
-
-	// ****************************************************************************************
-	//                               START POSITION (SIMPLE SLIDER)
-	// ****************************************************************************************
-
-	/*// this time a simple slider
-	~widgets["startPos"]= Slider(
-		mainWin,
-		Rect(260,(10 + (height*5)),150,25)
-	);
-	~widgets["startPos"].action = {
-		"twattock".postln;
-		~widgets["startPos"].value.postln;
-		~specs["startPos"].postln;
-		~twattock = ~specs["startPos"].map(~widgets["startPos"].value).postln;
-		~proxies["startPos"].source = ~specs["startPos"].map(~widgets["startPos"].value).postln;
-		~widgets["startPosVal"].value = ~specs["startPos"].map(~widgets["startPos"].value)
-	};
-
-	// simple slider so we have to do the label manually
-	~widgets["txtStartPos"]=StaticText(
-		mainWin,
-		Rect(10,(10 + (height*5)),
-			eZsLabelWidth,25)
-	);
-	~widgets["txtStartPos"].align_(\right);
-	~widgets["txtStartPos"].font = font;
-	~widgets["txtStartPos"].string = "start position(" ++ ~wiiMap["startPos"] ++ ")";
-
-	// ****************************************************************************************
-	//                               START POSITION VALUE FIELD
-	// ****************************************************************************************
-
-	~widgets["startPosVal"] = TextField(
-		mainWin,
-		Rect(560,(10 + (height*5)),150,25)
-	);
-
-*/
-	// ****************************************************************************************
-	//                               START/STOP BUTTON
-	// ****************************************************************************************
 
 
 	// now a start/stop
@@ -415,14 +322,7 @@ CmdPeriod.add({
 	~widgets["tempo"].align_(\center);
 	~widgets["tempo"].font = font;
 
-	// *******************************************************
-	// MIXER SLIDER
-	// *******************************************************
-	~widgets["amp"] = Slider(mainWin, Rect(10, 300, 20, 80));
-	~widgets["amp"].action = ({|slid|
-		~proxies["amp"].source = slid.value.postln;
-	});
-	~widgets["amp"].enabled = isEnabled;
+
 
 	// ***************
 	// the pattern bit
@@ -446,7 +346,7 @@ CmdPeriod.add({
 	// *****************************************************************************
 
 	Preset.new(mainWin,
-		things:~widgets.postln,
+		things: ~dataStore; // ~widgets.postln,
 		// file: "parrotsPresets.txt"
 	);
 
